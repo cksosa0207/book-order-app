@@ -14,20 +14,28 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install Cordova (網頁轉成原生APP的工具)
+      - name: Install Cordova
         run: npm install -g cordova
 
       - name: Create Cordova Project
         run: |
+          # 建立專案
           cordova create myapp com.yourname.bookorder "圖書訂單APP"
           cd myapp
           cordova platform add android@12.0.0
           rm -rf www/*
-          cp ../index.html www/
+          
+          # 【升級防錯】自動搜尋專案中任何名為 index.html 的檔案並複製過去
+          HTML_PATH=$(find .. -name "[iI]ndex.html*" | head -n 1)
+          if [ -z "$HTML_PATH" ]; then
+            echo "找不到任何 index.html 檔案！請確保你有上傳網頁檔案！"
+            exit 1
+          fi
+          echo "成功找到網頁檔案：$HTML_PATH"
+          cp "$HTML_PATH" www/index.html
 
       - name: Enable LocalStorage & Permissions
         run: |
-          # 確保 WebView 權限完全打開
           sed -i 's/<widget/<widget xmlns:android="http:\/\/://android.com\/apk\/res\/android"/g' myapp/config.xml
 
       - name: Build Android APK

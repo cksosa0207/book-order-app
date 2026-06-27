@@ -1,0 +1,42 @@
+name: Build Android APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Cordova (網頁轉成原生APP的工具)
+        run: npm install -g cordova
+
+      - name: Create Cordova Project
+        run: |
+          cordova create myapp com.yourname.bookorder "圖書訂單APP"
+          cd myapp
+          cordova platform add android@12.0.0
+          rm -rf www/*
+          cp ../index.html www/
+
+      - name: Enable LocalStorage & Permissions
+        run: |
+          # 確保 WebView 權限完全打開
+          sed -i 's/<widget/<widget xmlns:android="http:\/\/://android.com\/apk\/res\/android"/g' myapp/config.xml
+
+      - name: Build Android APK
+        run: |
+          cd myapp
+          cordova build android --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Book-Order-App-APK
+          path: myapp/platforms/android/app/build/outputs/apk/debug/app-debug.apk

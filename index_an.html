@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>智慧圖書訂單 APP</title>
+    <style>
+        /* 全域手機樣式 */
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background-color: #f1f5f9; color: #1e293b; }
+        .app-container { max-width: 480px; margin: 0 auto; padding-bottom: 90px; }
+        
+        /* 卡片與表單 */
+        .card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 12px; }
+        .form-row { margin-bottom: 12px; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #64748b; }
+        
+        /* 下拉選單與增加入口 */
+        .input-group { display: flex; gap: 8px; align-items: center; }
+        select, input { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; background-color: white; -webkit-appearance: none; }
+        select { background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://w3.org' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 40px; }
+        
+        /* 按鈕設計 */
+        .btn { border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .btn-add-db { width: 44px; height: 44px; background-color: #475569; color: white; font-size: 1.2rem; flex-shrink: 0; }
+        .btn-primary { width: 100%; padding: 14px; background-color: #2563eb; color: white; font-size: 1rem; }
+        .btn-primary:active { background-color: #1d4ed8; }
+        
+        /* 訂單項目卡片清單 */
+        .order-item { background: white; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #3b82f6; display: flex; justify-content: space-between; align-items: center; }
+        .order-info div { margin-bottom: 2px; font-size: 0.95rem; }
+        .pub-tag { font-size: 0.8rem; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+
+        /* 固定底部列印面板 */
+        .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 12px 16px; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); display: flex; justify-content: center; z-index: 100; }
+        .bottom-bar .btn { width: 100%; max-width: 450px; padding: 14px; background-color: #10b981; color: white; font-size: 1rem; }
+
+        /* 彈出式速加視窗 (Modal) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 200; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; width: 100%; max-width: 360px; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .modal-footer { display: flex; gap: 8px; margin-top: 15px; }
+        .modal-footer .btn { flex: 1; padding: 10px; }
+
+        /* A4 列印格式 */
+        #printArea { display: none; }
+        @media print {
+            .no-print { display: none !important; }
+            #printArea { display: block !important; }
+            body { background: white; padding: 0; margin: 0; color: #000; }
+            .print-page { page-break-after: always; padding: 20px; font-family: "Microsoft JhengHei", sans-serif; }
+            .print-page:last-child { page-break-after: avoid; }
+            .fax-header { border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 15px; text-align: center; }
+            .fax-title { font-size: 26px; font-weight: bold; }
+            .fax-meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
+            th, td { border: 1px solid #000; padding: 10px; text-align: left; font-size: 14px; }
+            th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .text-right { text-align: right; }
+            .fax-footer { margin-top: 30px; border-top: 1px dashed #000; padding-top: 10px; font-size: 12px; display: flex; justify-content: space-between; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container no-print">
+    <!-- 下單主要卡片 -->
+    <div class="card">
+        <h3 style="margin-top:0; color:#1e293b; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">🛒 快速登錄訂單</h3>
+        
+        <div class="form-row">
+            <label>學校名稱</label>
+            <div class="input-group">
+                <select id="sel_school"><option value="">-- 請選擇學校 --</option></select>
+                <button class="btn btn-add-db" onclick="openModal('schools', '🏫 新增學校名稱')">＋</button>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <label>老師 / 訂貨人</label>
+            <div class="input-group">
+                <select id="sel_buyer"><option value="">-- 請選擇老師 --</option></select>
+                <button class="btn btn-add-db" onclick="openModal('buyers', '👤 新增老師姓名')">＋</button>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <label>出版社</label>
+            <div class="input-group">
+                <select id="sel_publisher"><option value="">-- 請選擇出版社 --</option></select>
+                <button class="btn btn-add-db" onclick="openModal('publishers', '🏢 新增出版社')">＋</button>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <label>商品 / 書名</label>
+            <div class="input-group">
+                <select id="sel_product"><option value="">-- 請選擇商品 --</option></select>
+                <button class="btn btn-add-db" onclick="openModal('products', '📘 新增商品/書名')">＋</button>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <label>輸入數量</label>
+            <input type="number" id="num_quantity" inputmode="numeric" pattern="[0-9]*" placeholder="請填寫數字">
+        </div>
+        
+        <button class="btn btn-primary" onclick="addOrder()">➕ 加入清單</button>
+    </div>
+
+    <!-- 本次已登錄項目 -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0 8px 0;">
+        <strong style="color:#475569;">📋 已登錄項目 (<span id="count">0</span>)</strong>
+        <button onclick="clearOrders()" style="color:#ef4444; background:none; border:none; font-size:0.85rem; font-weight:bold;">全部清空</button>
+    </div>
+    <div id="orderList"></div>
+</div>
+
+<!-- 固定底部列印按鈕 -->
+<div class="bottom-bar no-print">
+    <button class="btn" onclick="generateAndPrint()">🖨️ 生成 A4 傳真單 / PDF</button>
+</div>
+
+<!-- 彈出式速加視窗 -->
+<div id="dbModal" class="modal">
+    <div class="modal-content">
+        <h4 id="modalTitle" style="margin-top:0;">新增資料</h4>
+        <input type="text" id="modalInput" placeholder="請輸入名稱">
+        <div class="modal-footer">
+            <button class="btn" style="background:#e2e8f0; color:#475569;" onclick="closeModal()">取消</button>
+            <button class="btn" style="background:#2563eb; color:white;" onclick="saveModalData()">確認儲存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 列印專用隱藏區 -->
+<div id="printArea"></div>
+
+<script>
+    // 資料庫初始化與讀取
+    let db = JSON.parse(localStorage.getItem('phone_book_db')) || {
+        schools: ['中山國小', '大安國中'],
+        buyers: ['張組長', '林老師'],
+        publishers: ['三民書局', '康軒文教', '翰林出版'],
+        products: ['國語課本一上', '數學隨堂彩卷二下', '英文習作三年級']
+    };
+    let orders = JSON.parse(localStorage.getItem('phone_book_orders')) || [];
+
+    // 當前彈出視窗正在操作的資料 key
+    let currentModalKey = '';
+
+    // 初始化載入
+    updateSelects();
+    updateOrderUI();
+
+    // 訂單介面：更新下拉選單內容
+    function updateSelects() {
+        const mappings = { schools: 'sel_school', buyers: 'sel_buyer', publishers: 'sel_publisher', products: 'sel_product' };
+        for (const [key, id] of Object.entries(mappings)) {
+            const select = document.getElementById(id);
+            const savedValue = select.value;
+            
+            select.innerHTML = `<option value="">-- 請選擇 --</option>`;
+            db[key].forEach(item => {
+                select.innerHTML += `<option value="${item}">${item}</option>`;
+            });
+            
+            if(db[key].includes(savedValue)) select.value = savedValue;
+        }
+    }
+
+    // 開啟速加視窗
+    function openModal(key, title) {
+        currentModalKey = key;
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalInput').value = '';
+        document.getElementById('dbModal').classList.add('active');
+        document.getElementById('modalInput').focus();
+    }
+
+    // 關閉速加視窗
+    function closeModal() {
+        document.getElementById('dbModal').classList.remove('active');
+    }
+
+    // 儲存速加資料
+    function saveModalData() {
+        const value = document.getElementById('modalInput').value.trim();
+        if(!value) return;
+        
+        if(db[currentModalKey].includes(value)) {
+            alert('這個名稱已經存在囉！');
+            return;
+        }
+        
+        db[currentModalKey].push(value);
+        localStorage.setItem('phone_book_db', JSON.stringify(db));
+        
+        updateSelects();
+        
+        // 貼心設計：自動幫使用者選取剛剛新增的那一筆項目
+        const mappings = { schools: 'sel_school', buyers: 'sel_buyer', publishers: 'sel_publisher', products: 'sel_product' };
+        document.getElementById(mappings[currentModalKey]).value = value;
+        
+        closeModal();
+    }
+
+    // 新增訂單項目
+    function addOrder() {
